@@ -1,0 +1,302 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Calculator</title>
+    <style>
+        body {
+            margin: 0;
+            height: 100vh;
+            display: flex;
+            flex-direction: column;
+            background-color: #f0f0f0;
+            font-family: Arial, sans-serif;
+            user-select: none;
+            overflow: hidden;
+        }
+        #controlPanel {
+            width: 100%;
+            padding: 10px;
+            background-color: #333;
+            color: #fff;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            position: fixed;
+            top: 0;
+            left: 0;
+            z-index: 1001;
+        }
+        .movableWindow {
+            position: absolute;
+            width: 400px;
+            height: 600px;
+            border: 2px solid #333;
+            background-color: #fff;
+            box-shadow: 0 0 10px rgba(0, 0, 0, 0.2);
+            z-index: 1000;
+            box-sizing: border-box;
+            overflow: hidden;
+        }
+        .windowHeader {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            cursor: move;
+            background-color: #333;
+            color: #fff;
+            padding: 10px;
+            user-select: none;
+            box-sizing: border-box;
+        }
+        .closeButton {
+            cursor: pointer;
+            background-color: #ff4c4c;
+            border: none;
+            color: white;
+            padding: 2px 10px;
+            margin-left: 10px;
+            font-size: 16px;
+            font-weight: bold;
+            border-radius: 3px;
+        }
+        .iframeContainer {
+            width: 100%;
+            height: calc(100% - 40px);
+            box-sizing: border-box;
+            overflow: hidden;
+        }
+        iframe {
+            width: 100%;
+            height: 100%;
+            border: none;
+            display: block;
+        }
+        .resize-handle {
+            position: absolute;
+            width: 16px;
+            height: 16px;
+            background-color: #333;
+            cursor: nwse-resize;
+            right: 0;
+            bottom: 0;
+            border-radius: 0 0 0 4px;
+        }
+    </style>
+</head>
+<body>
+
+<div id="controlPanel">
+    <select id="windowType">
+        <option value="https://www.desmos.com/fourfunction" data-name="4 Function" data-scale="true" data-aspect-ratio="true">4 Function</option>
+        <option value="https://www.desmos.com/scientific" data-name="Scientific" data-scale="false" data-aspect-ratio="false">Scientific</option>
+        <option value="https://www.desmos.com/calculator" data-name="Graphing" data-scale="false" data-aspect-ratio="false">Graphing</option>
+        <option value="https://www.desmos.com/3d" data-name="3D Graphing" data-scale="false" data-aspect-ratio="false">3D Graphing</option>
+        <option value="https://www.desmos.com/matrix" data-name="Matrix" data-scale="false" data-aspect-ratio="false">Matrix</option>
+        <option value="https://www.desmos.com/geometry" data-name="Geometry" data-scale="false" data-aspect-ratio="false">Geometry</option>
+        <option value="ctsm" data-name="Custom" data-scale="false" data-aspect-ratio="false">Custom Embed</option>
+        <option value="data:text/html,<head><style>@import url('https://fonts.googleapis.com/css2?family=Roboto:ital,wght@0,100;0,300;0,400;0,500;0,700;0,900&display=swap');</style><style>.roboto-regular {font-family: 'Roboto', system-ui;font-weight: 400;font-style: normal;}</style></head><body contenteditable=true class=roboto-regular>" data-name="Notepad" data-scale="false" data-aspect-ratio="false">Notepad</option>
+        <option value="win" data-name="Window Area" data-scale="false" data-aspect-ratio="false">Window Area</option>
+    </select>
+    <button id="spawnWindowButton">Open</button>
+</div>
+
+<script>
+    const spawnWindowButton = document.getElementById('spawnWindowButton');
+    const windowType = document.getElementById('windowType');
+    const emptydoc = "data:text/html;base64," + btoa(document.documentElement.outerHTML)
+
+    spawnWindowButton.addEventListener('click', () => {
+        const selectedOption = windowType.options[windowType.selectedIndex];
+        const selectedUrl = selectedOption.value;
+        const windowName = selectedOption.getAttribute('data-name');
+        const scale = selectedOption.getAttribute('data-scale') === 'true';
+        const maintainAspectRatio = selectedOption.getAttribute('data-aspect-ratio') === 'true';
+        spawnWindow(selectedUrl, windowName, scale, maintainAspectRatio);
+    });
+
+    function spawnWindow(url, name, scale, maintainAspectRatio) {
+        const movableWindow = document.createElement('div');
+        movableWindow.className = 'movableWindow';
+        movableWindow.style.left = '100px';
+        movableWindow.style.top = '100px';
+
+        const windowHeader = document.createElement('div');
+        windowHeader.className = 'windowHeader';
+
+        const headerText = document.createElement('span');
+        headerText.textContent = name;
+
+        const closeButton = document.createElement('button');
+        closeButton.className = 'closeButton';
+        closeButton.textContent = 'X';
+        closeButton.addEventListener('click', () => {
+            document.body.removeChild(movableWindow);
+        });
+
+        windowHeader.appendChild(headerText);
+        windowHeader.appendChild(closeButton);
+
+        const iframeContainer = document.createElement('div');
+        iframeContainer.className = 'iframeContainer';
+
+        const iframe = document.createElement('iframe');
+        if (url === "ctsm") {
+            url = prompt("Enter URL (with https://!) (only works if embedding is supported)");
+            headerText.textContent = prompt("Enter Window Label");
+        }
+        if (url === "win") {
+            url = emptydoc;
+            headerText.textContent = prompt("Label");
+        }
+        if (url === "grph") {
+            url = prompt("Graph URL");
+            if (prompt("Teacher Mode? (Y/N)").toLowerCase() === "y") {
+                url = url + "?authorFeatures";
+            }
+        }
+        iframe.src = url;
+
+        iframeContainer.appendChild(iframe);
+
+        const resizeHandle = document.createElement('div');
+        resizeHandle.className = 'resize-handle';
+        movableWindow.appendChild(resizeHandle);
+
+        movableWindow.appendChild(windowHeader);
+        movableWindow.appendChild(iframeContainer);
+
+        document.body.appendChild(movableWindow);
+
+        addDragFunctionality(windowHeader, movableWindow);
+
+        if (scale) {
+            addScaleFunctionality(movableWindow, maintainAspectRatio);
+        } else {
+            addResizeFunctionality(resizeHandle, movableWindow, maintainAspectRatio);
+        }
+    }
+
+    function addDragFunctionality(header, windowElement) {
+        let isDragging = false;
+        let offsetX, offsetY;
+
+        header.addEventListener('mousedown', (e) => {
+            isDragging = true;
+            offsetX = e.clientX - windowElement.offsetLeft;
+            offsetY = e.clientY - windowElement.offsetTop;
+            header.style.cursor = 'grabbing';
+        });
+
+        document.addEventListener('mousemove', (e) => {
+            if (isDragging) {
+                const windowWidth = windowElement.offsetWidth;
+                const windowHeight = windowElement.offsetHeight;
+                const controlPanelHeight = document.getElementById('controlPanel').offsetHeight;
+                const viewportWidth = window.innerWidth;
+                const viewportHeight = window.innerHeight;
+
+                let newX = e.clientX - offsetX;
+                let newY = e.clientY - offsetY;
+
+                if (newX < 0) newX = 0;
+                if (newX + windowWidth > viewportWidth) newX = viewportWidth - windowWidth;
+                if (newY < controlPanelHeight) newY = controlPanelHeight;
+                if (newY + windowHeight > viewportHeight) newY = viewportHeight - windowHeight;
+
+                windowElement.style.left = `${newX}px`;
+                windowElement.style.top = `${newY}px`;
+            }
+        });
+
+        document.addEventListener('mouseup', () => {
+            isDragging = false;
+            header.style.cursor = 'move';
+        });
+    }
+
+    function addResizeFunctionality(handle, windowElement, maintainAspectRatio) {
+        let isResizing = false;
+        let initialWidth, initialHeight, initialX, initialY;
+        const minWidth = 400;
+        const minHeight = 600;
+
+        handle.addEventListener('mousedown', (e) => {
+            isResizing = true;
+            initialWidth = windowElement.offsetWidth;
+            initialHeight = windowElement.offsetHeight;
+            initialX = e.clientX;
+            initialY = e.clientY;
+
+            document.addEventListener('mousemove', resizeWindow);
+            document.addEventListener('mouseup', () => {
+                isResizing = false;
+                document.removeEventListener('mousemove', resizeWindow);
+            });
+        });
+
+        function resizeWindow(e) {
+            if (isResizing) {
+                let newWidth = initialWidth + (e.clientX - initialX);
+                let newHeight = initialHeight + (e.clientY - initialY);
+
+                if (maintainAspectRatio) {
+                    const aspectRatio = initialWidth / initialHeight;
+                    if (newWidth / newHeight > aspectRatio) {
+                        newHeight = Math.max(newHeight, minHeight);
+                        newWidth = newHeight * aspectRatio;
+                    } else {
+                        newWidth = Math.max(newWidth, minWidth);
+                        newHeight = newWidth / aspectRatio;
+                    }
+                } else {
+                    newWidth = Math.max(newWidth, minWidth);
+                    newHeight = Math.max(newHeight, minHeight);
+                }
+
+                windowElement.style.width = `${newWidth}px`;
+                windowElement.style.height = `${newHeight}px`;
+            }
+        }
+    }
+
+    function addScaleFunctionality(windowElement, maintainAspectRatio) {
+        let isScaling = false;
+        let initialWidth, initialHeight, initialX, initialY;
+
+        windowElement.addEventListener('mousedown', (e) => {
+            if (e.target !== windowElement) return;
+            isScaling = true;
+            initialWidth = windowElement.offsetWidth;
+            initialHeight = windowElement.offsetHeight;
+            initialX = e.clientX;
+            initialY = e.clientY;
+
+            document.addEventListener('mousemove', scaleWindow);
+            document.addEventListener('mouseup', () => {
+                isScaling = false;
+                document.removeEventListener('mousemove', scaleWindow);
+            });
+        });
+
+        function scaleWindow(e) {
+            if (isScaling) {
+                const scaleFactor = e.clientX / initialX;
+                let newWidth = initialWidth * scaleFactor;
+                let newHeight = initialHeight * scaleFactor;
+
+                if (maintainAspectRatio) {
+                    const aspectRatio = initialWidth / initialHeight;
+                    newHeight = newWidth / aspectRatio;
+                }
+
+                windowElement.style.width = `${newWidth}px`;
+                windowElement.style.height = `${newHeight}px`;
+            }
+        }
+    }
+</script>
+
+</body>
+</html>
