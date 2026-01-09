@@ -1,0 +1,41 @@
+<!DOCTYPE html>
+<html>
+<head>
+  <meta charset="utf-8">
+  <title>Download HEX Example</title>
+</head>
+<body>
+  <h1>Download a HEX File</h1>
+
+  <!-- Link to trigger download -->
+  <a href="#" id="downloadLink">Download HEX</a>
+
+  <script>
+    // URL of the HEX file to download
+    const hexUrl = "https://files.catbox.moe/d367dx.hex"; // replace with your HEX URL
+
+    document.getElementById("downloadLink").addEventListener("click", async (e) => {
+      e.preventDefault(); // prevent default link behavior
+
+      try {
+        const res = await fetch(hexUrl);
+        if (!res.ok) throw new Error("Failed to fetch HEX file");
+
+        const arrayBuffer = await res.arrayBuffer();
+        const blob = new Blob([arrayBuffer], { type: "application/octet-stream" });
+
+        const a = document.createElement("a");
+        a.href = URL.createObjectURL(blob);
+        a.download = "program.hex"; // file name when saved
+        document.body.appendChild(a);
+        a.click();
+        a.remove();
+
+        console.log("HEX download triggered!");
+      } catch (err) {
+        alert("Error downloading HEX: " + err.message);
+      }
+    });
+  </script>
+</body>
+</html>
