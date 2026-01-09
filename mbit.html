@@ -5,57 +5,59 @@
   <title>micro:bit Flash Test</title>
 </head>
 <body>
-  <h1>micro:bit Flash from Link</h1>
+  <h1>Flash HEX via App</h1>
+
   <input type="text" id="hexUrl" placeholder="Enter HEX file URL" size="50" />
-  <button id="flashBtn">Flash to App</button>
+  <button id="prepareBtn">Prepare HEX</button>
+  <button class="download-button">Flash to micro:bit</button>
 
   <script>
-  // Helper: fetch binary file and convert to Base64
-  async function fetchHexAsBase64(url) {
-      const response = await fetch(url);
-      if (!response.ok) throw new Error("Failed to fetch HEX file");
-      const arrayBuffer = await response.arrayBuffer();
+  let hexData = null;
+
+  // Fetch the HEX file from a URL and convert to Base64
+  async function fetchHex(url) {
+      const res = await fetch(url);
+      if (!res.ok) throw new Error("Failed to fetch HEX file");
+      const arrayBuffer = await res.arrayBuffer();
       let binary = '';
       const bytes = new Uint8Array(arrayBuffer);
       for (let i = 0; i < bytes.byteLength; i++) {
           binary += String.fromCharCode(bytes[i]);
       }
-      return btoa(binary);
+      hexData = btoa(binary);
+      alert("HEX file ready. Click 'Flash to micro:bit' button now.");
   }
 
-  async function flashHexFromUrl() {
+  document.getElementById("prepareBtn").addEventListener("click", () => {
       const url = document.getElementById("hexUrl").value.trim();
-      if (!url) return alert("Enter a URL to a HEX file");
+      if (!url) return alert("Enter a HEX file URL first");
+      fetchHex(url).catch(err => alert("Error: " + err.message));
+  });
 
-      try {
-          const base64Hex = await fetchHexAsBase64(url);
-
-          // Detect MakeCode Android app
-          const isApp = new URLSearchParams(window.location.search).has('androidapp');
-
-          if (isApp) {
-              const msg = {
-                  type: 'importfile',
-                  filename: url.split("/").pop() || "program.hex",
-                  parts: [ base64Hex ]
-              };
-              window.postMessage(msg, '*');
-              alert("HEX sent to app for flashing!");
-          } else {
-              // Browser fallback: download
-              const blob = new Blob([atob(base64Hex)], { type: 'application/octet-stream' });
-              const a = document.createElement("a");
-              a.href = URL.createObjectURL(blob);
-              a.download = url.split("/").pop() || "program.hex";
-              a.click();
-          }
-      } catch (err) {
-          console.error(err);
-          alert("Error fetching or flashing HEX: " + err.message);
+  // Optional: attach to download-button dynamically
+  const downloadButton = document.querySelector(".download-button");
+  downloadButton.addEventListener("click", (e) => {
+      if (!hexData) {
+          alert("HEX file not ready. Click 'Prepare HEX' first.");
+          e.preventDefault();
+          return;
       }
-  }
 
-  document.getElementById("flashBtn").addEventListener("click", flashHexFromUrl);
+      // If running inside MakeCode app, the AndroidFunction is injected automatically
+      if (window.AndroidFunction && typeof AndroidFunction.clickDownload === "function") {
+          console.log("Calling AndroidFunction.clickDownload()");
+          AndroidFunction.clickDownload(); // app handles flashing
+      } else {
+          // Browser fallback: download the file
+          const blob = new Blob([atob(hexData)], {type: "application/octet-stream"});
+          const a = document.createElement("a");
+          a.href = URL.createObjectURL(blob);
+          a.download = "program.hex";
+          a.click();
+      }
+
+      e.preventDefault();
+  });
   </script>
 </body>
 </html>
